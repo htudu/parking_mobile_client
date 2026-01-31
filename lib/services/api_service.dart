@@ -1,9 +1,19 @@
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class ApiService {
-  static const String baseUrl = 'https://court-hub-tuesday-asp.trycloudflare.com';
+  static const String defaultBaseUrl = 'https://court-hub-tuesday-asp.trycloudflare.com';
   String? _authToken;
+  String? _baseUrl;
+
+  Future<String> get baseUrl async {
+    if (_baseUrl != null) return _baseUrl!;
+    
+    final prefs = await SharedPreferences.getInstance();
+    _baseUrl = prefs.getString('api_base_url') ?? defaultBaseUrl;
+    return _baseUrl!;
+  }
 
   void setAuthToken(String token) {
     _authToken = token;
@@ -15,8 +25,9 @@ class ApiService {
   };
 
   Future<Map<String, dynamic>> login(String email, String password) async {
+    final url = await baseUrl;
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
+      Uri.parse('$url/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
     );
@@ -31,8 +42,9 @@ class ApiService {
   }
 
   Future<List<dynamic>> getAvailableSlots() async {
+    final url = await baseUrl;
     final response = await http.get(
-      Uri.parse('$baseUrl/slots/available'),
+      Uri.parse('$url/slots/available'),
       headers: _headers,
     );
 
@@ -45,8 +57,9 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> reserveSlot(int slotId) async {
+    final url = await baseUrl;
     final response = await http.post(
-      Uri.parse('$baseUrl/reservations/create?slot_id=$slotId'),
+      Uri.parse('$url/reservations/create?slot_id=$slotId'),
       headers: _headers,
     );
 
@@ -58,8 +71,9 @@ class ApiService {
   }
 
   Future<bool> checkoutReservation(int reservationId) async {
+    final url = await baseUrl;
     final response = await http.post(
-      Uri.parse('$baseUrl/reservations/$reservationId/checkout'),
+      Uri.parse('$url/reservations/$reservationId/checkout'),
       headers: _headers,
     );
 
@@ -67,8 +81,9 @@ class ApiService {
   }
 
   Future<List<dynamic>> getMyReservations() async {
+    final url = await baseUrl;
     final response = await http.get(
-      Uri.parse('$baseUrl/reservations/'),
+      Uri.parse('$url/reservations/'),
       headers: _headers,
     );
 

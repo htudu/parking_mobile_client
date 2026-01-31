@@ -4,6 +4,7 @@ import '../main.dart';
 import '../services/api_service.dart';
 import 'reservation_screen.dart';
 import 'my_reservations_screen.dart';
+import 'settings_screen.dart';
 
 class SlotsScreen extends StatefulWidget {
   const SlotsScreen({Key? key}) : super(key: key);
@@ -38,6 +39,15 @@ class _SlotsScreenState extends State<SlotsScreen> {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const MyReservationsScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
               );
             },
           ),
