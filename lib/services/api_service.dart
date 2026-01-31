@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ApiService {
-  static const String baseUrl = 'https://beaches-wing-focusing-computer.trycloudflare.com';
+  static const String baseUrl = 'https://court-hub-tuesday-asp.trycloudflare.com';
   String? _authToken;
 
   void setAuthToken(String token) {
