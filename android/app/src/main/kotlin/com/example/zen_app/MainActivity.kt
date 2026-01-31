@@ -1,4 +1,4 @@
-package com.example.flutter_starter
+package com.example.zen_app
 
 import io.flutter.embedding.android.FlutterActivity
 
