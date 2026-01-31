@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import 'login_screen.dart';
 import 'reservation_screen.dart';
 import 'my_reservations_screen.dart';
 import 'settings_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class SlotsScreen extends StatefulWidget {
   const SlotsScreen({Key? key}) : super(key: key);
@@ -25,6 +28,26 @@ class _SlotsScreenState extends State<SlotsScreen> {
   void _loadSlots() {
     final api = Provider.of<ApiService>(context, listen: false);
     _slotsFuture = api.getAvailableSlots();
+  }
+
+  Future<void> _checkoutReservation(int reservationId) async {
+    try {
+      final api = Provider.of<ApiService>(context, listen: false);
+      await api.checkoutReservation(reservationId);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Successfully checked out!')),
+        );
+        setState(_loadSlots);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Checkout failed: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -53,12 +76,16 @@ class _SlotsScreenState extends State<SlotsScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              Provider.of<AuthProvider>(context, listen: false).logout();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const SlotsScreen()),
-                (route) => false,
-              );
+            onPressed: () async {
+              final api = Provider.of<ApiService>(context, listen: false);
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              await authProvider.logout(api);
+              if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
             },
           ),
         ],
@@ -111,12 +138,21 @@ class _SlotsScreenState extends State<SlotsScreen> {
                 final slot = slots[index];
                 return SlotCard(
                   slot: slot,
-                  onReserve: () {
-                    Navigator.of(context).push(
+                  onReserve: () async {
+                    final result = await Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => ReservationScreen(slotId: slot['id']),
                       ),
                     );
+                    // Refresh slots if a reservation was made
+                    if (result == true) {
+                      setState(_loadSlots);
+                    }
+                  },
+                  onCheckout: () async {
+                    if (slot['reservation_id'] != null) {
+                      await _checkoutReservation(slot['reservation_id']);
+                    }
                   },
                 );
               },
@@ -135,21 +171,24 @@ class _SlotsScreenState extends State<SlotsScreen> {
 class SlotCard extends StatelessWidget {
   final Map<String, dynamic> slot;
   final VoidCallback onReserve;
+  final VoidCallback onCheckout;
 
   const SlotCard({
     Key? key,
     required this.slot,
     required this.onReserve,
+    required this.onCheckout,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final isAvailable = slot['is_available'] ?? false;
+    final userHasReservation = slot['user_reservation'] ?? false;
 
     return Card(
       elevation: 2,
       child: InkWell(
-        onTap: isAvailable ? onReserve : null,
+        onTap: isAvailable ? onReserve : (userHasReservation ? onCheckout : null),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -172,6 +211,15 @@ class SlotCard extends StatelessWidget {
                 ElevatedButton(
                   onPressed: onReserve,
                   child: const Text('Reserve'),
+                )
+              else if (userHasReservation)
+                ElevatedButton.icon(
+                  onPressed: onCheckout,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Checkout'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                  ),
                 )
               else
                 OutlinedButton(

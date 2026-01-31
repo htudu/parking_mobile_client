@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../services/api_service.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ReservationScreen extends StatefulWidget {
   final int slotId;
@@ -23,7 +25,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
   void _makeReservation() {
     final api = Provider.of<ApiService>(context, listen: false);
-    _reservationFuture = api.reserveSlot(widget.slotId);
+    setState(() {
+      _reservationFuture = api.reserveSlot(widget.slotId);
+    });
   }
 
   @override
@@ -58,7 +62,24 @@ class _ReservationScreenState extends State<ReservationScreen> {
           }
 
           final reservation = snapshot.data ?? {};
-          final qrImage = reservation['qr_image'];
+          final qrData = reservation['qr_code_data'];
+          Widget qrWidget;
+          if (qrData != null && qrData is String && qrData.isNotEmpty) {
+            qrWidget = QrImageView(
+              data: qrData,
+              version: QrVersions.auto,
+              size: 200,
+            );
+          } else {
+            qrWidget = Container(
+              width: 200,
+              height: 200,
+              color: Colors.grey[300],
+              child: const Center(
+                child: Text('QR Code'),
+              ),
+            );
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -88,21 +109,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        if (qrImage != null)
-                          Image.network(
-                            qrImage,
-                            width: 200,
-                            height: 200,
-                          )
-                        else
-                          Container(
-                            width: 200,
-                            height: 200,
-                            color: Colors.grey[300],
-                            child: const Center(
-                              child: Text('QR Code'),
-                            ),
-                          ),
+                        qrWidget,
                         const SizedBox(height: 16),
                         Text(
                           'Slot: ${reservation['slot_number'] ?? 'N/A'}',
@@ -122,7 +129,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(context, true); // Return true to indicate reservation was made
                     },
                     icon: const Icon(Icons.check),
                     label: const Text('Back to Slots'),

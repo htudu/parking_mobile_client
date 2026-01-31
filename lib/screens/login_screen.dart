@@ -49,19 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (success && mounted) {
-        api.setAuthToken(authProvider.token!);
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const SlotsScreen()),
           (route) => false,
         );
-      } else {
-        setState(() {
-          _errorMessage = 'Invalid credentials';
-        });
       }
-    } catch (e) {
+    } on Exception catch (e) {
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
       });
     } finally {
       if (mounted) {

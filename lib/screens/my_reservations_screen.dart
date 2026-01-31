@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import 'qr_scanner_screen.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class MyReservationsScreen extends StatefulWidget {
   const MyReservationsScreen({Key? key}) : super(key: key);
@@ -69,10 +70,14 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
           IconButton(
             icon: const Icon(Icons.qr_code_2),
             tooltip: 'Scan QR to Checkout',
-            onPressed: () {
-              Navigator.of(context).push(
+            onPressed: () async {
+              final result = await Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const QRScannerScreen()),
               );
+              // Refresh reservations if checkout was done via QR scan
+              if (result == true) {
+                setState(_loadReservations);
+              }
             },
           ),
         ],
@@ -159,6 +164,25 @@ class ReservationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final qrData = reservation['qr_code_data'];
+    Widget qrWidget;
+    if (qrData != null && qrData is String && qrData.isNotEmpty) {
+      qrWidget = QrImageView(
+        data: qrData,
+        version: QrVersions.auto,
+        size: 200,
+      );
+    } else {
+      qrWidget = Container(
+        width: 200,
+        height: 200,
+        color: Colors.grey[300],
+        child: const Center(
+          child: Text('No QR Code'),
+        ),
+      );
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -199,23 +223,7 @@ class ReservationCard extends StatelessWidget {
                         title: const Text('QR Code'),
                         content: Column(
                           mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (reservation['qr_image'] != null)
-                              Image.network(
-                                reservation['qr_image'],
-                                width: 200,
-                                height: 200,
-                              )
-                            else
-                              Container(
-                                width: 200,
-                                height: 200,
-                                color: Colors.grey[300],
-                                child: const Center(
-                                  child: Text('No QR Code'),
-                                ),
-                              ),
-                          ],
+                          children: [qrWidget],
                         ),
                         actions: [
                           TextButton(
@@ -248,7 +256,6 @@ class ReservationCard extends StatelessWidget {
   String _formatDate(dynamic date) {
     if (date == null) return 'N/A';
     try {
-      // Assuming ISO format from API
       final dateTime = DateTime.parse(date.toString());
       return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     } catch (e) {

@@ -38,15 +38,15 @@ class ParkingApp extends StatelessWidget {
   }
 }
 
-/// Auth Provider for managing login state
+/// Auth Provider for managing login state and JWT token
 class AuthProvider extends ChangeNotifier {
-  String? _token;
   String? _userEmail;
+  String? _jwtToken;
   bool _isLoading = false;
 
-  bool get isAuthenticated => _token != null;
-  String? get token => _token;
+  bool get isAuthenticated => _jwtToken != null;
   String? get userEmail => _userEmail;
+  String? get jwtToken => _jwtToken;
   bool get isLoading => _isLoading;
 
   Future<bool> login(ApiService api, String email, String password) async {
@@ -55,21 +55,44 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final result = await api.login(email, password);
-      _token = result['token'];
-      _userEmail = email;
+      _userEmail = result['email'];
+      _jwtToken = result['token'];
+      api.setAuthToken(_jwtToken!);
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
       _isLoading = false;
       notifyListeners();
-      return false;
+      rethrow;
     }
   }
 
-  void logout() {
-    _token = null;
+  Future<bool> register(ApiService api, String email, String password, String passwordConfirm) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await api.register(email, password, passwordConfirm);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> logout(ApiService api) async {
+    try {
+      await api.logout();
+    } catch (e) {
+      // Handle logout error
+    }
     _userEmail = null;
+    _jwtToken = null;
+    api.setAuthToken(null);
     notifyListeners();
   }
 }

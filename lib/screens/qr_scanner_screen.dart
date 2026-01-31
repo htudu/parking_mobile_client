@@ -79,8 +79,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                           actions: [
                             TextButton(
                               onPressed: () {
-                                Navigator.pop(context);
-                                Navigator.pop(context); // Back to reservations
+                                Navigator.pop(context); // Close dialog
+                                Navigator.pop(context, true); // Return to reservations with true
                               },
                               child: const Text('OK'),
                             ),
