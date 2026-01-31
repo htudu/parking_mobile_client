@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -32,11 +31,16 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reservation Details'),
-      ),
-      body: FutureBuilder<Map<String, dynamic>>(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, true);
+        return false; // Prevent default back behavior
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Reservation Details'),
+        ),
+        body: FutureBuilder<Map<String, dynamic>>(
         future: _reservationFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -62,21 +66,66 @@ class _ReservationScreenState extends State<ReservationScreen> {
           }
 
           final reservation = snapshot.data ?? {};
-          final qrData = reservation['qr_code_data'];
+          print('=== Reservation Response ===');
+          print('Keys: ${reservation.keys}');
+          print('Full response: $reservation');
+          
+          // Try to get QR data from either field
+          final qrImageData = reservation['qr_code_image'] ?? reservation['qr_code_data'];
+          print('QR Image Data available: ${qrImageData != null}');
+          
           Widget qrWidget;
-          if (qrData != null && qrData is String && qrData.isNotEmpty) {
-            qrWidget = QrImageView(
-              data: qrData,
-              version: QrVersions.auto,
-              size: 200,
+          
+          // Decode using helper method
+          final imageBytes = ApiService.decodeQRImage(qrImageData);
+          
+          if (imageBytes != null && imageBytes.isNotEmpty) {
+            print('Successfully decoded QR image: ${imageBytes.length} bytes');
+            qrWidget = SizedBox(
+              width: 200,
+              height: 200,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                ),
+                child: Image.memory(
+                  imageBytes,
+                  fit: BoxFit.contain,
+                  gaplessPlayback: true,
+                  errorBuilder: (context, error, stackTrace) {
+                    print('Image widget error: $error\n$stackTrace');
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error, color: Colors.red, size: 48),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Image Error',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
             );
           } else {
+            print('Failed to decode QR image');
             qrWidget = Container(
               width: 200,
               height: 200,
               color: Colors.grey[300],
               child: const Center(
-                child: Text('QR Code'),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.qr_code, size: 48, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('QR Code Not Available'),
+                  ],
+                ),
               ),
             );
           }
@@ -142,6 +191,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
             ),
           );
         },
+      ),
       ),
     );
   }

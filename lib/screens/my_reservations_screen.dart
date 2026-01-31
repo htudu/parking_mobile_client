@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import 'qr_scanner_screen.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:convert';
 
 class MyReservationsScreen extends StatefulWidget {
   const MyReservationsScreen({Key? key}) : super(key: key);
@@ -164,13 +164,42 @@ class ReservationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final qrData = reservation['qr_code_data'];
+    // Try both field names
+    final qrImageData = reservation['qr_code_image'] ?? reservation['qr_code_data'];
     Widget qrWidget;
-    if (qrData != null && qrData is String && qrData.isNotEmpty) {
-      qrWidget = QrImageView(
-        data: qrData,
-        version: QrVersions.auto,
-        size: 200,
+    
+    // Use helper method to decode
+    final imageBytes = ApiService.decodeQRImage(qrImageData);
+    
+    if (imageBytes != null && imageBytes.isNotEmpty) {
+      qrWidget = SizedBox(
+        width: 200,
+        height: 200,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+          ),
+          child: Image.memory(
+            imageBytes,
+            fit: BoxFit.contain,
+            gaplessPlayback: true,
+            errorBuilder: (context, error, stackTrace) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error, color: Colors.red, size: 48),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Image Error',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
       );
     } else {
       qrWidget = Container(
@@ -178,7 +207,14 @@ class ReservationCard extends StatelessWidget {
         height: 200,
         color: Colors.grey[300],
         child: const Center(
-          child: Text('No QR Code'),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.qr_code, size: 48, color: Colors.grey),
+              SizedBox(height: 8),
+              Text('No QR Code'),
+            ],
+          ),
         ),
       );
     }

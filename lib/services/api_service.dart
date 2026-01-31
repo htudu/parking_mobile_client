@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 
 class ApiService {
   static const String defaultBaseUrl = 'https://court-hub-tuesday-asp.trycloudflare.com';
@@ -80,8 +81,10 @@ class ApiService {
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
+    } else if (response.statusCode == 401) {
+      throw Exception('Unauthorized - token expired');
     } else {
-      throw Exception('Failed to load slots');
+      throw Exception('Failed to load slots: ${response.statusCode}');
     }
   }
 
@@ -118,6 +121,32 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to load reservations');
+    }
+  }
+
+  // Helper method to decode base64 QR code image
+  static Uint8List? decodeQRImage(dynamic qrData) {
+    if (qrData == null || qrData is! String || qrData.isEmpty) {
+      return null;
+    }
+
+    try {
+      // Check if it's a data URI
+      if (qrData.startsWith('data:image')) {
+        final parts = qrData.split(',');
+        if (parts.length != 2) {
+          print('Invalid data URI: expected 2 parts after split');
+          return null;
+        }
+        final base64String = parts[1];
+        return base64Decode(base64String);
+      }
+      
+      // Try direct base64 decode
+      return base64Decode(qrData);
+    } catch (e) {
+      print('QR decode error: $e');
+      return null;
     }
   }
 }
